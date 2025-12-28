@@ -70,8 +70,12 @@
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
           packages = [
+            pkgs.cargo-edit
             # pkgs.ripgrep
           ];
+
+          CLANG_PATH = "${pkgs.llvmPackages_20.clang}/bin/clang";
+          LIBCLANG_PATH = "${pkgs.llvmPackages_20.libclang.lib}/lib";
         };
       }
     );
