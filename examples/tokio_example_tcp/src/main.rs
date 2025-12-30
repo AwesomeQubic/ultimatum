@@ -1,13 +1,18 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
 
 #[tokio::main]
 async fn main() {
     let socket = TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
         Ipv4Addr::new(127, 0, 0, 1),
         6664,
-    ))).await.unwrap();
+    )))
+    .await
+    .unwrap();
     loop {
         let out = socket.accept().await.unwrap();
         tokio::spawn(handler(out.0));

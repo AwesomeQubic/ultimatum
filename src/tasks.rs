@@ -2,6 +2,7 @@ use std::{
     net::SocketAddr,
     os::{fd::RawFd, raw::c_void},
     pin::Pin,
+    time::Instant,
 };
 
 use libc::{in6_addr, in_addr, sockaddr_in, sockaddr_in6, AF_INET};
@@ -28,6 +29,7 @@ const TASK_BUF: usize = 2 * 4096;
 
 impl ThreadLocalTasking {
     pub fn setup(io: &mut ThreadIo, stats: &mut Statistics) -> ThreadLocalTasking {
+        let now = Instant::now();
         let settings = get_settings();
         let connections = settings.connections_per_thread();
 
@@ -59,13 +61,14 @@ impl ThreadLocalTasking {
                     state: TaskState::default(),
                     addr: None,
                     addr6: None,
+                    send_time: None,
                 });
             }
 
             for ele in tasks.iter_mut() {
                 let index = ele.index;
                 let mut buf = buffers_for_task(&mut mapped, index);
-                ele.progress(None, io, &mut buf, stats);
+                ele.progress(None, io, &mut buf, stats, &now);
             }
 
             ThreadLocalTasking {
@@ -75,10 +78,16 @@ impl ThreadLocalTasking {
         }
     }
 
-    pub fn progress(&mut self, io: &mut ThreadIo, cqe: io_uring_cqe, stats: &mut Statistics) {
+    pub fn progress(
+        &mut self,
+        io: &mut ThreadIo,
+        cqe: io_uring_cqe,
+        stats: &mut Statistics,
+        now: &Instant,
+    ) {
         let index = cqe.user_data as usize;
         let mut buf = buffers_for_task(&mut self.memory, index);
-        self.tasks[index].progress(Some(cqe), io, &mut buf, stats);
+        self.tasks[index].progress(Some(cqe), io, &mut buf, stats, now);
     }
 }
 
@@ -93,6 +102,8 @@ struct Task {
     fd: RawFd,
     dumb_rand: u64,
     state: TaskState,
+
+    send_time: Option<Instant>,
 
     //Adresses
     addr: Option<Pin<Box<sockaddr_in>>>,
@@ -116,6 +127,7 @@ impl Task {
         ring: &mut ThreadIo,
         buf: &mut TaskBuf<'_>,
         stats: &mut Statistics,
+        now: &Instant,
     ) {
         unsafe {
             if let Some(cqe) = cqe.as_ref() {
@@ -189,6 +201,8 @@ impl Task {
                         0,
                     );
 
+                    self.send_time = Some(*now);
+
                     self.state = TaskState::Receive;
                 }
                 TaskState::Send => {
@@ -205,6 +219,12 @@ impl Task {
                     } else {
                         stats.increment_successful_returns();
                     }
+
+                    if let Some(started) = self.send_time.take() {
+                        stats.new_measurement(now.duration_since(started));
+                    }
+
+                    self.send_time = Some(*now);
 
                     let out: &mut [u64] = bytemuck::cast_slice_mut(buf.send);
                     for ele in out.iter_mut() {

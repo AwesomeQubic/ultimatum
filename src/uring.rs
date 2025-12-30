@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, marker::PhantomData, mem::zeroed, ptr};
+use std::{collections::VecDeque, marker::PhantomData, mem::zeroed, ptr, time::Instant};
 
 use libc::c_uint;
 use liburing_rs::*;
@@ -30,8 +30,11 @@ impl ThreadIo {
         }
     }
 
-    // Get space in ring for next SQE
-    // SAFETY: io_uring_sqe can not be written to once ThreadIo goes out of scope
+    /// Get space in ring for next SQE
+    /// 
+    /// # SAFETY
+    /// 
+    /// io_uring_sqe can not be written to once ThreadIo goes out of scope
     #[inline]
     pub unsafe fn push(&mut self) -> *mut io_uring_sqe {
         let mut sqe = unsafe { io_uring_get_sqe(&raw mut self.ring) };
@@ -51,11 +54,12 @@ impl ThreadIo {
     }
 
     #[inline]
-    pub fn wait_for_more(&mut self, out_buf: &mut VecDeque<io_uring_cqe>) {
+    pub fn wait_for_more(&mut self, out_buf: &mut VecDeque<io_uring_cqe>) -> Instant {
         unsafe {
             let out = io_uring_submit_and_wait(&raw mut self.ring, 1);
-
             assert!(out >= 0, "Error while submitting");
+
+            let cycle_time = Instant::now();
 
             let mut i = 0;
             io_uring_for_each_cqe(&raw mut self.ring, |x| {
@@ -63,6 +67,8 @@ impl ThreadIo {
                 i += 1;
             });
             io_uring_cq_advance(&raw mut self.ring, i);
+
+            cycle_time
         }
     }
 

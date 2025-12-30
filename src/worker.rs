@@ -39,7 +39,7 @@ pub fn worker() -> Statistics {
 
     let mut out = VecDeque::new();
     loop {
-        io.wait_for_more(&mut out);
+        let current = io.wait_for_more(&mut out);
         let mut last = false;
         while let Some(cqe) = out.pop_front() {
             if cqe.user_data == u64::MAX {
@@ -47,7 +47,7 @@ pub fn worker() -> Statistics {
                 continue;
             }
 
-            tasking.progress(&mut io, cqe, &mut stats);
+            tasking.progress(&mut io, cqe, &mut stats, &current);
         }
 
         if last {

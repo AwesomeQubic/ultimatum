@@ -1,4 +1,8 @@
-use std::{net::{Ipv4Addr, SocketAddr, SocketAddrV4}, sync::Arc, thread::available_parallelism};
+use std::{
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    sync::Arc,
+    thread::available_parallelism,
+};
 use tokio::net::UdpSocket;
 
 #[tokio::main]
@@ -6,7 +10,9 @@ async fn main() {
     let socket = UdpSocket::bind(SocketAddr::V4(SocketAddrV4::new(
         Ipv4Addr::new(127, 0, 0, 1),
         6664,
-    ))).await.unwrap();
+    )))
+    .await
+    .unwrap();
 
     let socket = Arc::new(socket);
     let mut handles = Vec::new();
@@ -14,7 +20,7 @@ async fn main() {
     for _ in 0..available_parallelism().map(|x| x.get()).unwrap_or(4) {
         handles.push(tokio::spawn(handler(socket.clone())));
     }
-    
+
     for ele in handles {
         let _ = ele.await;
     }
