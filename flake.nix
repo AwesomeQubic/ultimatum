@@ -37,9 +37,12 @@
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
           ];
+
+          CLANG_PATH = "${pkgs.llvmPackages_20.clang}/bin/clang";
+          LIBCLANG_PATH = "${pkgs.llvmPackages_20.libclang.lib}/lib";
         };
 
-        my-crate = craneLib.buildPackage (
+        ultimatum = craneLib.buildPackage (
           commonArgs
           // {
             cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -51,15 +54,6 @@
         );
       in
       {
-        checks = {
-          inherit my-crate;
-        };
-
-        packages.default = my-crate;
-
-        apps.default = flake-utils.lib.mkApp {
-          drv = my-crate;
-        };
 
         devShells.default = craneLib.devShell {
           # Inherit inputs from checks.

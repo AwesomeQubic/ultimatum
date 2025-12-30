@@ -39,7 +39,7 @@ pub fn load() -> &'static Settings {
         connections: 1024,
         threads: available_parallelism().unwrap_or(NonZero::new(1).unwrap()),
         target: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6664)),
-        proto: Protocol::Udp,
+        proto: Protocol::Tcp,
         debug: false,
     };
 

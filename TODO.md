@@ -1,2 +1,3 @@
 - Use linked SQEs (make Receive stage just reference itself (more friendly to branch predictor and kernel))
 - Figure out if latency measurements are possible without sacrificing performance
+- Gracefully terminate connection
