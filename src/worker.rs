@@ -1,34 +1,62 @@
-use std::{ffi::c_uint, mem::zeroed, net::SocketAddr, num::NonZero, sync::LazyLock, thread::available_parallelism};
+use std::{
+    collections::VecDeque,
+    thread::{self, JoinHandle},
+};
 
 use liburing_rs::*;
 
-use crate::{settings::{self, get_settings}, tasks};
+use crate::{
+    settings::get_settings,
+    stats::{self, Statistics},
+    tasks,
+    uring::ThreadIo,
+};
 
-pub const IO_URING_SIZE: c_uint = 512;
+pub fn burn() {
+    let settings = get_settings();
+    let join_handles: Vec<JoinHandle<Statistics>> = (0..settings.threads.get())
+        .map(|_| thread::spawn(worker))
+        .collect();
+    let mut our_stats = Statistics::default();
+    for ele in join_handles.into_iter() {
+        our_stats.merge(ele.join().unwrap());
+    }
+    stats::print_stats_final(&our_stats);
+}
 
-pub fn burn() {}
-
-pub fn worker() {
+pub fn worker() -> Statistics {
     let settings = get_settings();
 
-    let burn = timespec::from(settings.burn_time);
+    let mut stats = Statistics::default();
+    let mut io = ThreadIo::create();
+    let mut tasking = tasks::ThreadLocalTasking::setup(&mut io, &mut stats);
 
-    let mut io = unsafe { zeroed::<io_uring>() };
-
+    let sqe = io.push().sqe();
     unsafe {
-        //SAFETY: Se
-        io_uring_queue_init(
-            IO_URING_SIZE,
-            &raw mut io,
-            IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN,
-        );
-    }
+        io_uring_prep_timeout(sqe, &settings.burn_time as *const __kernel_timespec, 0, 0);
+        io_uring_sqe_set_data64(sqe, u64::MAX);
+    };
 
-    let tasking = settings.connections.div_ceil(settings.threads.get());
-
-    let mut tasking = tasks::ThreadLocalTasking::setup(&raw mut io, tasking, &settings);
-
+    //Found this to be a bit faster
+    let mut out = VecDeque::new();
     loop {
+        io.wait_for_more(&mut out);
+        let mut last = false;
+        while let Some(cqe) = out.pop_front() {
+            if cqe.user_data == u64::MAX {
+                last = true;
+                continue;
+            }
 
+            tasking.progress(&mut io, cqe, &mut stats);
+        }
+
+        if last {
+            break;
+        }
     }
+
+    drop(io);
+
+    stats
 }

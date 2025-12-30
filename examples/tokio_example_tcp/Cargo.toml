@@ -1,0 +1,13 @@
+[package]
+name = "tokio_example_tcp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.48.0", features = ["rt-multi-thread", "net", "parking_lot", "macros", "io-util" ] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = true

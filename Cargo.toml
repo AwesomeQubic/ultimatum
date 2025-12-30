@@ -1,14 +1,23 @@
+[workspace]
+resolver = "3"
+members = [ "examples/std_example_tcp", "examples/tokio_example_tcp", "examples/tokio_example_udp"]
+
 [package]
-name = "quick-start-simple"
-version = "0.1.0"
+name = "ultimatum"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 axboe-liburing = "2.13.0"
-crossbeam = "0.8.4"
 libc = "0.2.178"
 memmap2 = "0.9.9"
-rand_core = "0.9.3"
-wyrand = { version = "0.3.2", features = ["rand_core"] }
+nix = "0.30.1"
+bytemuck = "1.24.0"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = true

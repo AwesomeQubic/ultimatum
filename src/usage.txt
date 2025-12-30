@@ -1,0 +1,15 @@
+Ultimatum benchmarking software
+
+flags:
+ -c <num connections> - number of connections (should be set to a number divisible by number of threads)
+ -t <num threads> - set the number of threads to use (default is number of cores on your system)
+ -p udp/tcp - set protocol to use
+ -b <burn time> - time to benchmark in seconds
+ --debug yes - print some debug information (tho not many)
+
+address is by default set to 127.0.0.1:6667
+
+example:
+ultimatum -c 16 -t 2 -p tcp -b 10 127.0.0.1:2567
+
+Have a fast day :3
