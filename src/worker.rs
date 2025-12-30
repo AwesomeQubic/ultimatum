@@ -37,7 +37,6 @@ pub fn worker() -> Statistics {
         io_uring_sqe_set_data64(sqe, u64::MAX);
     };
 
-    //Found this to be a bit faster
     let mut out = VecDeque::new();
     loop {
         io.wait_for_more(&mut out);
