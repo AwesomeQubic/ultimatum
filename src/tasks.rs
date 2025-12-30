@@ -124,7 +124,7 @@ impl Task {
                 }
             }
 
-            let sqe = ring.push().sqe();
+            let sqe = ring.push();
             io_uring_sqe_set_data64(sqe, self.index as u64);
 
             match self.state {

@@ -30,8 +30,10 @@ impl ThreadIo {
         }
     }
 
+    // Get space in ring for next SQE
+    // SAFETY: io_uring_sqe can not be written to once ThreadIo goes out of scope
     #[inline]
-    pub fn push<'a>(&'a mut self) -> PushPlace<'a> {
+    pub unsafe fn push(&mut self) -> *mut io_uring_sqe {
         let mut sqe = unsafe { io_uring_get_sqe(&raw mut self.ring) };
 
         if sqe.is_null() {
@@ -45,8 +47,7 @@ impl ThreadIo {
             sqe = sqe_retry;
         }
 
-        //SAFETY: We checked it above
-        PushPlace(sqe, PhantomData)
+        sqe
     }
 
     #[inline]
@@ -67,14 +68,6 @@ impl ThreadIo {
 
     pub fn inner(&mut self) -> *mut io_uring {
         &raw mut self.ring
-    }
-}
-
-pub struct PushPlace<'a>(*mut io_uring_sqe, PhantomData<&'a mut ThreadIo>);
-
-impl<'a> PushPlace<'a> {
-    pub fn sqe(&mut self) -> *mut io_uring_sqe {
-        self.0
     }
 }
 

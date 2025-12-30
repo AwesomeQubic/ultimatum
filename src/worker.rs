@@ -31,8 +31,8 @@ pub fn worker() -> Statistics {
     let mut io = ThreadIo::create();
     let mut tasking = tasks::ThreadLocalTasking::setup(&mut io, &mut stats);
 
-    let sqe = io.push().sqe();
     unsafe {
+        let sqe = io.push();
         io_uring_prep_timeout(sqe, &settings.burn_time as *const __kernel_timespec, 0, 0);
         io_uring_sqe_set_data64(sqe, u64::MAX);
     };
